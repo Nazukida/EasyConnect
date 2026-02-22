@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EasyConnect</string>
+    <string name="send_text">发送文字</string>
+    <string name="send_file">发送文件</string>
+    <string name="no_devices">正在搜索设备...</string>
+    <string name="select_device">请先选择一个设备</string>
+    <string name="enter_message">请输入要发送的内容</string>
+    <string name="send_success">发送成功</string>
+    <string name="send_failed">发送失败</string>
+    <string name="received_text">收到文字</string>
+    <string name="received_file">收到文件</string>
+    <string name="from">来自</string>
+    <string name="copy">复制</string>
+    <string name="open">打开</string>
+</resources>

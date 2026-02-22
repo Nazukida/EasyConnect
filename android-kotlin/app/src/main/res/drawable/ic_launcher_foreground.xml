@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- 连接图标 - 双向箭头表示传输 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 L54,78 M54,30 L44,42 M54,30 L64,42 M54,78 L44,66 M54,78 L64,66"
+        android:strokeWidth="4"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"/>
+    
+    <!-- 左侧设备 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M26,44 L26,64 L38,64 L38,44 Z"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"/>
+    
+    <!-- 右侧设备 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M70,44 L70,64 L82,64 L82,44 Z"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"/>
+    
+    <!-- 连接线 -->
+    <path
+        android:pathData="M38,54 L44,54 M64,54 L70,54"
+        android:strokeWidth="3"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"/>
+</vector>
