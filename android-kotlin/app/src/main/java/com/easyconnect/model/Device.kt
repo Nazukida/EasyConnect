@@ -1,8 +1,5 @@
 package com.easyconnect.model
 
-/**
- * 发现的设备
- */
 data class Device(
     val name: String,
     val ip: String,

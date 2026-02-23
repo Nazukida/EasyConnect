@@ -7,12 +7,8 @@ import android.util.Log
 import com.easyconnect.Config
 import com.easyconnect.model.Device
 
-/**
- * 使用 Android NSD (Network Service Discovery) 实现 mDNS 设备发现
- * 与桌面版的 zeroconf 协议兼容
- */
+/** mDNS 设备发现，与桌面版 zeroconf 协议兼容 */
 class DeviceDiscovery(private val context: Context) {
-    
     companion object {
         private const val TAG = "DeviceDiscovery"
     }
@@ -32,9 +28,6 @@ class DeviceDiscovery(private val context: Context) {
     private var isDiscovering = false
     private var isRegistered = false
     
-    /**
-     * 启动设备发现服务
-     */
     fun start() {
         if (nsdManager == null) {
             nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
@@ -44,9 +37,6 @@ class DeviceDiscovery(private val context: Context) {
         startDiscovery()
     }
     
-    /**
-     * 注册本机服务，让其他设备能发现
-     */
     private fun registerService() {
         if (isRegistered) return
         
@@ -84,9 +74,6 @@ class DeviceDiscovery(private val context: Context) {
         }
     }
     
-    /**
-     * 开始发现其他设备
-     */
     private fun startDiscovery() {
         if (isDiscovering) return
         
@@ -143,9 +130,6 @@ class DeviceDiscovery(private val context: Context) {
         }
     }
     
-    /**
-     * 解析服务详情获取 IP 地址
-     */
     private fun resolveService(serviceInfo: NsdServiceInfo) {
         nsdManager?.resolveService(serviceInfo, object : NsdManager.ResolveListener {
             override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) {
@@ -173,11 +157,7 @@ class DeviceDiscovery(private val context: Context) {
         })
     }
     
-    /**
-     * 停止设备发现服务
-     */
     fun stop() {
-        // 停止发现
         if (isDiscovering && discoveryListener != null) {
             try {
                 nsdManager?.stopServiceDiscovery(discoveryListener)
@@ -186,7 +166,6 @@ class DeviceDiscovery(private val context: Context) {
             }
         }
         
-        // 注销服务
         if (isRegistered && registrationListener != null) {
             try {
                 nsdManager?.unregisterService(registrationListener)
@@ -200,13 +179,6 @@ class DeviceDiscovery(private val context: Context) {
         isRegistered = false
     }
     
-    /**
-     * 获取所有已发现的设备
-     */
     fun getDevices(): List<Device> = devices.values.toList()
-    
-    /**
-     * 根据 IP 获取设备
-     */
     fun getDeviceByIp(ip: String): Device? = devices[ip]
 }

@@ -1,13 +1,9 @@
-"""
-EasyConnect - 局域网文件传输工具
-主程序入口
-"""
+"""EasyConnect 主程序入口"""
 import sys
 import os
 import signal
 import atexit
 
-# 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PySide6.QtWidgets import QApplication
@@ -23,12 +19,8 @@ from utils.clipboard import ClipboardManager
 
 
 class EasyConnectApp(QObject):
-    """
-    EasyConnect 应用主类
-    整合所有模块
-    """
+    """应用主类，整合所有模块"""
     
-    # 线程安全的信号
     device_found_signal = Signal(str, str)  # ip, name
     device_lost_signal = Signal(str)  # ip
     text_received_signal = Signal(str, str)  # sender, text
@@ -59,18 +51,12 @@ class EasyConnectApp(QObject):
         print(f"[App] IP地址: {get_local_ip()}")
     
     def _init_network(self):
-        """初始化网络组件"""
-        # 设备发现
         self.discovery = DeviceDiscovery()
         self.discovery.set_callbacks(
             on_found=self._on_device_found,
             on_lost=self._on_device_lost
         )
-        
-        # 文件传输
         self.transfer = FileTransfer()
-        
-        # 传输服务器
         self.server = TransferServer(TRANSFER_PORT)
         self.server.set_callbacks(
             on_text=self._on_text_received,
@@ -79,93 +65,57 @@ class EasyConnectApp(QObject):
         )
     
     def _init_ui(self):
-        """初始化界面组件"""
-        # 主窗口
         self.main_window = MainWindow()
-        
-        # 发送面板（悬浮）
         self.send_panel = SendPanel()
-        
-        # 接收气泡管理器
         self.bubble_manager = BubbleManager()
-        
-        # 剪贴板管理器
         self.clipboard_manager = ClipboardManager(self.app)
     
     def _connect_signals(self):
-        """连接信号和槽"""
-        # 设备发现信号
         self.device_found_signal.connect(self.main_window.add_device)
         self.device_lost_signal.connect(self.main_window.remove_device)
-        
-        # 接收信号
         self.text_received_signal.connect(self._handle_text_received)
         self.file_received_signal.connect(self._handle_file_received)
-        
-        # 发送信号
         self.main_window.send_text_requested.connect(self._send_text)
         self.main_window.send_file_requested.connect(self._send_file)
-        
-        # 发送面板信号
         self.send_panel.send_to_device.connect(self._on_send_panel_device_selected)
-        
-        # 发送结果信号
         self.send_success_signal.connect(self._on_send_success)
         self.send_error_signal.connect(self._on_send_error)
-        
-        # 剪贴板变化
         self.clipboard_manager.clipboard_changed.connect(self._on_clipboard_changed)
     
-    # 网络回调（在网络线程中调用）
     def _on_device_found(self, device: Device):
-        """设备发现回调"""
-        # 更新发送面板
         self.send_panel.add_device(device.ip, device.name)
-        # 发送信号到主线程
         self.device_found_signal.emit(device.ip, device.name)
     
     def _on_device_lost(self, ip: str):
-        """设备丢失回调"""
         self.send_panel.remove_device(ip)
         self.device_lost_signal.emit(ip)
     
     def _on_text_received(self, sender: str, text: str):
-        """文字接收回调"""
         self.text_received_signal.emit(sender, text)
     
     def _on_file_received(self, sender: str, filename: str, filepath: str):
-        """文件接收回调"""
         self.file_received_signal.emit(sender, filename, filepath)
     
     def _on_transfer_progress(self, filename: str, current: int, total: int):
-        """传输进度回调"""
         self.transfer_progress_signal.emit(filename, current, total)
     
-    # 界面槽函数
     @Slot(str, str)
     def _handle_text_received(self, sender: str, text: str):
-        """处理接收到的文字"""
-        # 显示气泡
+        """处理文字接收"""
         self.bubble_manager.show_text_bubble(sender, text)
-        # 添加到历史
         self.main_window.add_receive_item(sender, text, is_file=False)
-        # 自动复制到剪贴板
         self.clipboard_manager.set_text(text)
     
     @Slot(str, str, str)
     def _handle_file_received(self, sender: str, filename: str, filepath: str):
-        """处理接收到的文件"""
-        # 显示气泡
+        """处理文件接收"""
         self.bubble_manager.show_file_bubble(sender, filename, filepath)
-        # 添加到历史
         self.main_window.add_receive_item(sender, filename, is_file=True)
     
     @Slot(str, str)
     def _send_text(self, target_ip: str, text: str):
-        """发送文字"""
         device = self.discovery.get_device_by_ip(target_ip)
         port = device.port if device else TRANSFER_PORT
-        
         self.transfer.send_text(
             target_ip, port, text,
             on_success=lambda: self.send_success_signal.emit(),
@@ -174,10 +124,8 @@ class EasyConnectApp(QObject):
     
     @Slot(str, str)
     def _send_file(self, target_ip: str, file_path: str):
-        """发送文件"""
         device = self.discovery.get_device_by_ip(target_ip)
         port = device.port if device else TRANSFER_PORT
-        
         self.transfer.send_file(
             target_ip, port, file_path,
             on_progress=lambda c, t: self.main_window.update_progress(c, t),
@@ -187,7 +135,6 @@ class EasyConnectApp(QObject):
     
     @Slot(str)
     def _on_send_panel_device_selected(self, ip: str):
-        """发送面板选择设备后发送"""
         content, content_type = self.send_panel.get_content()
         if content_type == "text":
             self._send_text(ip, content)
@@ -196,42 +143,28 @@ class EasyConnectApp(QObject):
     
     @Slot()
     def _on_send_success(self):
-        """发送成功"""
         self.main_window.statusBar().showMessage("发送成功！", 3000)
     
     @Slot(str)
     def _on_send_error(self, error: str):
-        """发送失败"""
         self.main_window.statusBar().showMessage(f"发送失败: {error}", 5000)
     
     @Slot(str)
     def _on_clipboard_changed(self, text: str):
-        """剪贴板内容变化"""
-        # 可以在这里显示发送面板，让用户快速发送剪贴板内容
-        # 暂时只是更新状态栏
         preview = text[:30] + "..." if len(text) > 30 else text
         self.main_window.statusBar().showMessage(f"剪贴板: {preview}", 2000)
     
     def start(self):
         """启动应用"""
-        # 启动网络服务
         self.discovery.start()
         self.server.start()
-        
-        # 启动剪贴板监控
         self.clipboard_manager.start_monitoring()
-        
-        # 显示主窗口
         self.main_window.show()
-        
         print("[App] EasyConnect 已启动")
-        
-        # 运行应用
         return self.app.exec()
     
     def stop(self):
         """停止应用"""
-        # 防止重复调用
         if self._stopped:
             return
         self._stopped = True

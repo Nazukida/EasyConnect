@@ -38,9 +38,24 @@ pyinstaller --name=EasyConnect --onefile --windowed --add-data "config.py;." --h
 
 ## 📱 Android APK 打包
 
-由于 PySide6 不支持 Android，Android 版本使用 Kivy 框架重写，位于 `android/` 目录。
+有两种 Android 版本可供选择：
 
-### 方法一：使用 WSL（Windows 用户推荐）
+### 方法一：Kotlin 版本（推荐）
+
+使用原生 Android Kotlin 开发，位于 `android-kotlin/` 目录。
+
+```bash
+cd android-kotlin
+./gradlew assembleDebug
+```
+
+APK 生成在 `android-kotlin/app/build/outputs/apk/debug/`
+
+详见 [android-kotlin/README.md](android-kotlin/README.md)
+
+### 方法二：Kivy 版本
+
+使用 Python Kivy 框架，位于 `android/` 目录。需要在 Linux/WSL 环境打包。
 
 ```bash
 # 1. 安装 WSL (管理员 PowerShell)

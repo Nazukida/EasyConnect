@@ -14,11 +14,8 @@ import com.easyconnect.MainActivity
 import com.easyconnect.network.DeviceDiscovery
 import com.easyconnect.network.TransferServer
 
-/**
- * 前台服务，用于在后台保持设备发现和文件接收
- */
+/** 前台服务，用于后台保持设备发现和文件接收 */
 class TransferService : Service() {
-    
     companion object {
         private const val CHANNEL_ID = "easyconnect_service"
         private const val NOTIFICATION_ID = 100

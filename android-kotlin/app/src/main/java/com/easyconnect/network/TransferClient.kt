@@ -10,24 +10,17 @@ import java.io.*
 import java.net.Socket
 import java.nio.ByteBuffer
 
-/**
- * 传输客户端 - 用于发送文字和文件
- * 与桌面版协议完全兼容
- */
+/** TCP 传输客户端，与桌面版协议兼容 */
 class TransferClient {
-    
     companion object {
         private const val TAG = "TransferClient"
-        private const val TIMEOUT = 10000 // 10秒
+        private const val TIMEOUT = 10000
     }
     
     private val deviceName = Config.getDeviceName()
     private val gson = Gson()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
-    /**
-     * 发送文字到目标设备
-     */
     fun sendText(
         targetIp: String,
         targetPort: Int,
@@ -52,13 +45,12 @@ class TransferClient {
                     val output = DataOutputStream(socket.getOutputStream())
                     val input = socket.getInputStream()
                     
-                    // 发送长度（4字节大端序）
+                    // 消息协议: 4字节长度头 + JSON
                     output.writeInt(jsonData.size)
-                    // 发送数据
                     output.write(jsonData)
                     output.flush()
                     
-                    // 等待确认
+                    // 等待ACK
                     val ack = ByteArray(3)
                     val read = input.read(ack)
                     
@@ -80,9 +72,6 @@ class TransferClient {
         }
     }
     
-    /**
-     * 发送文件到目标设备
-     */
     fun sendFile(
         targetIp: String,
         targetPort: Int,
@@ -101,7 +90,7 @@ class TransferClient {
                 val fileSize = file.length()
                 
                 Socket().use { socket ->
-                    socket.soTimeout = 60000 // 文件传输给更长时间
+                    socket.soTimeout = 60000 // 文件传输给更多时间
                     socket.connect(java.net.InetSocketAddress(targetIp, targetPort), TIMEOUT)
                     
                     val output = DataOutputStream(socket.getOutputStream())
@@ -120,14 +109,12 @@ class TransferClient {
                     output.write(jsonData)
                     output.flush()
                     
-                    // 等待接收方准备好
                     val ready = ByteArray(5)
                     val readLen = input.read(ready)
                     if (readLen != 5 || String(ready) != "READY") {
                         throw Exception("接收方未准备好")
                     }
                     
-                    // 发送文件数据
                     var sent = 0L
                     FileInputStream(file).use { fis ->
                         val buffer = ByteArray(Config.BUFFER_SIZE)
@@ -144,7 +131,6 @@ class TransferClient {
                     }
                     output.flush()
                     
-                    // 等待确认
                     val ack = ByteArray(3)
                     val ackRead = input.read(ack)
                     
@@ -166,9 +152,6 @@ class TransferClient {
         }
     }
     
-    /**
-     * 取消所有传输任务
-     */
     fun cancel() {
         scope.coroutineContext.cancelChildren()
     }

@@ -8,9 +8,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.easyconnect.databinding.ItemDeviceBinding
 import com.easyconnect.model.Device
 
-/**
- * 设备列表适配器
- */
 class DeviceAdapter(
     private val onDeviceClick: (Device) -> Unit
 ) : ListAdapter<Device, DeviceAdapter.DeviceViewHolder>(DeviceDiffCallback()) {

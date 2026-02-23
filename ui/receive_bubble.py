@@ -1,7 +1,4 @@
-"""
-接收气泡模块 - 屏幕左侧的通知气泡
-当收到文件或文字时弹出显示
-"""
+"""接收气泡模块 - 屏幕左侧通知气泡"""
 import os
 from typing import Optional
 from PySide6.QtWidgets import (
@@ -20,15 +17,11 @@ from config import RECEIVE_DIR
 
 
 class ReceiveBubble(QWidget):
-    """
-    接收气泡 - 在屏幕左侧弹出的通知
-    """
-    
-    # 信号
+    """接收通知气泡"""
     clicked = Signal()
     closed = Signal()
-    copy_requested = Signal(str)  # 复制文字请求
-    open_file_requested = Signal(str)  # 打开文件请求
+    copy_requested = Signal(str)
+    open_file_requested = Signal(str)
     
     def __init__(self, sender_name: str, content: str, content_type: str = "text", 
                  file_path: Optional[str] = None, parent=None):
@@ -44,8 +37,6 @@ class ReceiveBubble(QWidget):
         self._setup_animation()
     
     def _init_ui(self):
-        """初始化界面"""
-        # 设置窗口属性
         self.setWindowFlags(
             Qt.WindowType.WindowStaysOnTopHint | 
             Qt.WindowType.FramelessWindowHint |
@@ -53,8 +44,6 @@ class ReceiveBubble(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        
-        # 主容器
         container = QFrame(self)
         container.setStyleSheet("""
             QFrame {
@@ -67,13 +56,9 @@ class ReceiveBubble(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(container)
-        
-        # 容器内部布局
         inner_layout = QVBoxLayout(container)
         inner_layout.setContentsMargins(12, 12, 12, 12)
         inner_layout.setSpacing(8)
-        
-        # 标题栏
         title_layout = QHBoxLayout()
         
         icon = "📁" if self.content_type == "file" else "📝"
@@ -109,7 +94,6 @@ class ReceiveBubble(QWidget):
         
         inner_layout.addLayout(title_layout)
         
-        # 发送者
         sender_label = QLabel(f"来自: {self.sender_name}")
         sender_label.setStyleSheet("""
             QLabel {
@@ -119,11 +103,10 @@ class ReceiveBubble(QWidget):
         """)
         inner_layout.addWidget(sender_label)
         
-        # 内容预览
         if self.content_type == "text":
             preview = self.content[:100] + "..." if len(self.content) > 100 else self.content
         else:
-            preview = self.content  # 文件名
+            preview = self.content
             
         content_label = QLabel(preview)
         content_label.setStyleSheet("""
@@ -139,7 +122,6 @@ class ReceiveBubble(QWidget):
         content_label.setMaximumWidth(250)
         inner_layout.addWidget(content_label)
         
-        # 操作按钮
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
         
@@ -202,21 +184,17 @@ class ReceiveBubble(QWidget):
         self.adjustSize()
     
     def _setup_animation(self):
-        """设置动画效果"""
-        # 透明度效果
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.opacity_effect)
         self.opacity_effect.setOpacity(1.0)
     
     def _copy_text(self):
-        """复制文字到剪贴板"""
         clipboard = QApplication.clipboard()
         clipboard.setText(self.content)
         self.copy_requested.emit(self.content)
         self.close_bubble()
     
     def _open_file(self):
-        """打开文件"""
         if self.file_path and os.path.exists(self.file_path):
             if os.name == 'nt':
                 os.startfile(self.file_path)
@@ -226,7 +204,6 @@ class ReceiveBubble(QWidget):
         self.close_bubble()
     
     def _open_folder(self):
-        """打开文件所在文件夹"""
         if self.file_path:
             folder = os.path.dirname(self.file_path)
             if os.path.exists(folder):
@@ -237,12 +214,7 @@ class ReceiveBubble(QWidget):
         self.close_bubble()
     
     def show_bubble(self, duration: int = 8000):
-        """
-        显示气泡
-        
-        Args:
-            duration: 自动关闭时间（毫秒），0表示不自动关闭
-        """
+        """duration: 自动关闭时间(ms)，0表示不自动关闭"""
         self.show()
         self.raise_()
         
@@ -254,7 +226,6 @@ class ReceiveBubble(QWidget):
             self._auto_close_timer.start(duration)
     
     def _fade_out(self):
-        """淡出动画"""
         self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
         self.fade_animation.setDuration(300)
         self.fade_animation.setStartValue(1.0)
@@ -264,91 +235,71 @@ class ReceiveBubble(QWidget):
         self.fade_animation.start()
     
     def close_bubble(self):
-        """关闭气泡"""
         if self._auto_close_timer:
             self._auto_close_timer.stop()
         self.closed.emit()
         self.close()
     
     def enterEvent(self, event):
-        """鼠标进入时停止自动关闭"""
         if self._auto_close_timer:
             self._auto_close_timer.stop()
         super().enterEvent(event)
     
     def leaveEvent(self, event):
-        """鼠标离开时重新开始计时"""
         if self._auto_close_timer:
             self._auto_close_timer.start(3000)
         super().leaveEvent(event)
 
 
 class BubbleManager:
-    """
-    气泡管理器 - 管理多个气泡的显示和位置
-    """
+    """气泡位置管理器"""
     
     def __init__(self):
         self.bubbles: list[ReceiveBubble] = []
         self._base_y = 100  # 起始Y位置
         self._spacing = 10  # 气泡间距
-        self._margin = 20  # 屏幕边距
+        self._margin = 20
     
     def show_text_bubble(self, sender: str, text: str) -> ReceiveBubble:
-        """显示文字接收气泡"""
         bubble = ReceiveBubble(sender, text, "text")
         return self._show_bubble(bubble)
     
     def show_file_bubble(self, sender: str, filename: str, 
                          file_path: str) -> ReceiveBubble:
-        """显示文件接收气泡"""
         bubble = ReceiveBubble(sender, filename, "file", file_path)
         return self._show_bubble(bubble)
     
     def _show_bubble(self, bubble: ReceiveBubble) -> ReceiveBubble:
-        """显示气泡并管理位置"""
-        # 连接关闭信号
         bubble.closed.connect(lambda: self._remove_bubble(bubble))
-        
-        # 计算位置
         screen = QApplication.primaryScreen().geometry()
         x = self._margin
         y = self._calculate_y_position()
-        
         bubble.move(x, y)
         bubble.show_bubble()
-        
         self.bubbles.append(bubble)
         return bubble
     
     def _calculate_y_position(self) -> int:
-        """计算新气泡的Y位置"""
         if not self.bubbles:
             return self._base_y
-        
-        # 找到最下面的气泡
         last_bubble = self.bubbles[-1]
         return last_bubble.y() + last_bubble.height() + self._spacing
     
     def _remove_bubble(self, bubble: ReceiveBubble):
-        """移除气泡并重新排列"""
         if bubble in self.bubbles:
             self.bubbles.remove(bubble)
             self._rearrange_bubbles()
     
     def _rearrange_bubbles(self):
-        """重新排列气泡位置"""
         y = self._base_y
         for bubble in self.bubbles:
             if bubble.isVisible():
-                # 平滑移动动画
                 animation = QPropertyAnimation(bubble, b"pos")
                 animation.setDuration(200)
                 animation.setStartValue(bubble.pos())
                 animation.setEndValue(QPoint(bubble.x(), y))
                 animation.setEasingCurve(QEasingCurve.Type.OutQuad)
                 animation.start()
-                
                 y += bubble.height() + self._spacing
     
     def clear_all(self):

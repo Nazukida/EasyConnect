@@ -1,6 +1,4 @@
-"""
-设备发现模块 - 使用 mDNS (zeroconf) 实现局域网设备自动发现
-"""
+"""设备发现模块 - mDNS (zeroconf) 实现"""
 import socket
 import threading
 from typing import Dict, Callable, Optional
@@ -12,7 +10,7 @@ from config import SERVICE_TYPE, TRANSFER_PORT, get_device_name, get_local_ip
 
 
 class Device:
-    """表示一个发现的设备"""
+    """发现的设备"""
     def __init__(self, name: str, ip: str, port: int):
         self.name = name
         self.ip = ip
@@ -39,13 +37,11 @@ class DeviceListener(ServiceListener):
         self.local_ip = local_ip
     
     def add_service(self, zc: Zeroconf, type_: str, name: str):
-        """发现新设备"""
         info = zc.get_service_info(type_, name)
         if info:
             addresses = info.parsed_addresses()
             if addresses:
                 ip = addresses[0]
-                # 排除自己
                 if ip != self.local_ip:
                     device = Device(
                         name=info.server.rstrip('.') if info.server else name,
@@ -55,13 +51,9 @@ class DeviceListener(ServiceListener):
                     self.on_add(device)
     
     def remove_service(self, zc: Zeroconf, type_: str, name: str):
-        """设备离线"""
-        # 通过 name 构造一个临时设备对象用于移除
         self.on_remove(name)
     
     def update_service(self, zc: Zeroconf, type_: str, name: str):
-        """设备更新"""
-        # 当服务更新时，重新添加
         self.add_service(zc, type_, name)
 
 
@@ -84,12 +76,10 @@ class DeviceDiscovery:
     
     def set_callbacks(self, on_found: Callable[[Device], None], 
                       on_lost: Callable[[str], None]):
-        """设置设备发现/丢失的回调函数"""
         self._on_device_found = on_found
         self._on_device_lost = on_lost
     
     def _on_device_add(self, device: Device):
-        """内部设备添加处理"""
         if device.ip not in self.devices:
             self.devices[device.ip] = device
             print(f"[Discovery] 发现设备: {device}")
@@ -97,8 +87,7 @@ class DeviceDiscovery:
                 self._on_device_found(device)
     
     def _on_device_remove(self, name: str):
-        """内部设备移除处理"""
-        # 查找并移除设备
+        """ 移除设备"""
         to_remove = None
         for ip, device in self.devices.items():
             if device.name in name or name in device.name:
@@ -115,13 +104,8 @@ class DeviceDiscovery:
         """启动设备发现服务"""
         if self._running:
             return
-        
         self._running = True
-        
-        # 初始化 zeroconf
         self.zeroconf = Zeroconf(interfaces=['0.0.0.0'])
-        
-        # 注册自己的服务
         self._register_service()
         
         # 开始浏览其他设备
@@ -135,8 +119,7 @@ class DeviceDiscovery:
         print(f"[Discovery] 服务已启动 - {self.device_name} ({self.local_ip})")
     
     def _register_service(self):
-        """注册本机服务到 mDNS"""
-        # 创建服务信息
+        """mDNS 注册本机服务"""
         self.service_info = ServiceInfo(
             SERVICE_TYPE,
             f"{self.device_name}.{SERVICE_TYPE}",
@@ -148,8 +131,6 @@ class DeviceDiscovery:
             },
             server=f"{self.device_name.replace(' ', '_')}.local."
         )
-        
-        # 注册服务
         self.zeroconf.register_service(self.service_info)
         print(f"[Discovery] 已注册服务: {self.device_name}")
     

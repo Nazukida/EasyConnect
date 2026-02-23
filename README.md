@@ -15,7 +15,8 @@
 | 平台 | 技术栈 | 目录 |
 |------|--------|------|
 | Windows/macOS/Linux | Python + PySide6 | `./` (根目录) |
-| Android | Kotlin + Material Design | `./android-kotlin/` |
+| Android (推荐) | Kotlin + Material Design | `./android-kotlin/` |
+| Android (备选) | Python + Kivy | `./android/` |
 
 ## Windows 桌面版
 

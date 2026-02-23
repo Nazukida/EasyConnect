@@ -1,6 +1,4 @@
-"""
-数据传输模块 - 实现文件和文字的发送与接收
-"""
+"""数据传输模块 - 文件和文字的发送与接收"""
 import os
 import json
 import socket
@@ -16,23 +14,21 @@ from config import TRANSFER_PORT, BUFFER_SIZE, RECEIVE_DIR, MessageType, get_dev
 
 @dataclass
 class TransferData:
-    """传输数据结构"""
-    type: str  # TEXT 或 FILE
-    sender: str  # 发送者设备名
-    content: str  # 文字内容或文件名
-    file_size: int = 0  # 文件大小（仅文件传输时使用）
-    file_data: bytes = b''  # 文件数据（仅文件传输时使用）
+    type: str
+    sender: str
+    content: str
+    file_size: int = 0
+    file_data: bytes = b''
 
 
 class FileTransfer:
-    """文件/文字发送器"""
+    """TCP 发送器"""
     
     def __init__(self):
         self.device_name = get_device_name()
     
     def send_text(self, target_ip: str, target_port: int, text: str, 
                   on_success: Optional[Callable] = None, on_error: Optional[Callable] = None):
-        """发送文字到目标设备"""
         def _send():
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -46,11 +42,9 @@ class FileTransfer:
                         'content': text
                     }
                     
-                    # 发送 JSON 消息
+                    # 消息协议: 4字节长度头 + JSON
                     data = json.dumps(message, ensure_ascii=False).encode('utf-8')
-                    # 先发送长度（4字节）
                     s.sendall(len(data).to_bytes(4, 'big'))
-                    # 再发送数据
                     s.sendall(data)
                     
                     # 等待确认
@@ -67,13 +61,12 @@ class FileTransfer:
                 if on_error:
                     on_error(str(e))
         
-        # 在新线程中发送
+        # 异步发送
         threading.Thread(target=_send, daemon=True).start()
     
     def send_file(self, target_ip: str, target_port: int, file_path: str,
                   on_progress: Optional[Callable] = None, on_success: Optional[Callable] = None, 
                   on_error: Optional[Callable] = None):
-        """发送文件到目标设备"""
         def _send():
             try:
                 if not os.path.exists(file_path):
@@ -86,7 +79,6 @@ class FileTransfer:
                     s.settimeout(60)  # 文件传输给更多时间
                     s.connect((target_ip, target_port))
                     
-                    # 先发送文件信息
                     file_info = {
                         'type': MessageType.FILE,
                         'sender': self.device_name,
@@ -98,7 +90,6 @@ class FileTransfer:
                     s.sendall(len(info_data).to_bytes(4, 'big'))
                     s.sendall(info_data)
                     
-                    # 等待接收方准备好
                     ready = s.recv(5)
                     if ready != b'READY':
                         raise Exception("接收方未准备好")
@@ -133,7 +124,7 @@ class FileTransfer:
 
 
 class TransferServer:
-    """传输接收服务器"""
+    """TCP 接收服务器"""
     
     def __init__(self, port: int = TRANSFER_PORT):
         self.port = port
@@ -144,8 +135,6 @@ class TransferServer:
         # 新增：记录所有活跃的客户端连接
         self._active_connections: set = set()
         self._lock = threading.Lock()
-        
-        # 回调函数
         self._on_text_received = None
         self._on_file_received = None
         self._on_progress = None
@@ -153,37 +142,31 @@ class TransferServer:
     def set_callbacks(self, 
                       on_text: Callable[[str, str], None],  # (sender, text)
                       on_file: Callable[[str, str, str], None],  # (sender, filename, filepath)
-                      on_progress: Optional[Callable[[str, int, int], None]] = None):  # (filename, received, total)
-        """设置接收回调"""
+                      on_progress: Optional[Callable[[str, int, int], None]] = None):
         self._on_text_received = on_text
         self._on_file_received = on_file
         self._on_progress = on_progress
     
     def start(self):
-        """启动接收服务器"""
         if self._running:
             return
-        
         self._running = True
         self._thread = threading.Thread(target=self._run_server, daemon=True)
         self._thread.start()
         print(f"[Server] 传输服务器已启动，端口: {self.port}")
     
     def _run_server(self):
-        """运行服务器主循环"""
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind(('0.0.0.0', self.port))
         self.server_socket.listen(5)
-        self.server_socket.settimeout(1)  # 设置超时以便能够优雅退出
+        self.server_socket.settimeout(1)  # 超时便于优雅退出
         
         while self._running:
             try:
                 conn, addr = self.server_socket.accept()
-                # 记录连接
                 with self._lock:
                     self._active_connections.add(conn)
-                # 为每个连接创建新线程处理
                 threading.Thread(
                     target=self._handle_client, 
                     args=(conn, addr),
@@ -196,18 +179,13 @@ class TransferServer:
                     print(f"[Server] 接受连接错误: {e}")
     
     def _handle_client(self, conn: socket.socket, addr: tuple):
-        """处理客户端连接"""
         try:
             conn.settimeout(60)
-            
-            # 读取消息长度
             length_data = conn.recv(4)
             if not length_data:
                 return
             
             msg_length = int.from_bytes(length_data, 'big')
-            
-            # 读取消息内容
             msg_data = b''
             while len(msg_data) < msg_length:
                 chunk = conn.recv(min(BUFFER_SIZE, msg_length - len(msg_data)))
@@ -215,30 +193,24 @@ class TransferServer:
                     break
                 msg_data += chunk
             
-            # 解析 JSON
             message = json.loads(msg_data.decode('utf-8'))
             msg_type = message.get('type')
             sender = message.get('sender', 'Unknown')
             content = message.get('content', '')
             
             if msg_type == MessageType.TEXT:
-                # 处理文字消息
                 print(f"[Server] 收到文字来自 {sender}: {content[:50]}...")
                 conn.sendall(b'ACK')
                 if self._on_text_received:
                     self._on_text_received(sender, content)
                     
             elif msg_type == MessageType.FILE:
-                # 处理文件传输
                 file_size = message.get('file_size', 0)
                 file_name = content
-                
-                # 告诉发送方准备好了
                 conn.sendall(b'READY')
                 
-                # 接收文件数据
+                # 生成唯一文件名
                 file_path = os.path.join(RECEIVE_DIR, file_name)
-                # 如果文件已存在，添加数字后缀
                 base, ext = os.path.splitext(file_path)
                 counter = 1
                 while os.path.exists(file_path):
@@ -265,7 +237,6 @@ class TransferServer:
         except Exception as e:
             print(f"[Server] 处理客户端错误: {e}")
         finally:
-            # 连接结束时移除
             with self._lock:
                 if conn in self._active_connections:
                     self._active_connections.discard(conn)
@@ -275,11 +246,11 @@ class TransferServer:
                 pass
     
     def stop(self):
-        """停止服务器并强制关闭所有连接"""
+        """ 停止服务器"""
         print("[Server] 正在停止服务器并清理连接...")
         self._running = False
         
-        # 1. 强制关闭所有正在进行的客户端连接
+        # 关闭所有客户端连接
         with self._lock:
             for conn in self._active_connections:
                 try:
@@ -292,7 +263,7 @@ class TransferServer:
                     pass
             self._active_connections.clear()
         
-        # 2. 关闭主监听 socket
+        # 关闭主监听 socket
         if self.server_socket:
             try:
                 # 在 Windows 上有时仅仅 close 不够，需要 shutdown

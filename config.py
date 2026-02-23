@@ -1,6 +1,4 @@
-"""
-EasyConnect 配置文件
-"""
+"""EasyConnect 配置文件"""
 import os
 import socket
 import platform
@@ -11,22 +9,18 @@ APP_VERSION = "1.0.0"
 
 # 网络配置
 SERVICE_TYPE = "_easyconnect._tcp.local."  # mDNS 服务类型
-TRANSFER_PORT = 52525  # 文件传输端口
-DISCOVERY_PORT = 52526  # 设备发现端口
-BUFFER_SIZE = 8192  # 传输缓冲区大小
+TRANSFER_PORT = 52525
+DISCOVERY_PORT = 52526
+BUFFER_SIZE = 8192
 
-# 获取本机设备名
 def get_device_name():
-    """获取设备名称"""
     hostname = socket.gethostname()
     system = platform.system()
     return f"{hostname} ({system})"
 
-# 获取本机IP地址
 def get_local_ip():
-    """获取本地IP地址"""
+    """TCP 连接获取本地 IP"""
     try:
-        # 创建一个UDP socket来获取本地IP
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
@@ -37,8 +31,6 @@ def get_local_ip():
 
 # 文件接收目录
 RECEIVE_DIR = os.path.join(os.path.expanduser("~"), "EasyConnect_Received")
-
-# 确保接收目录存在
 if not os.path.exists(RECEIVE_DIR):
     os.makedirs(RECEIVE_DIR)
 

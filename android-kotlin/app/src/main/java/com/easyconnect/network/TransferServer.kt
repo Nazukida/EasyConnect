@@ -14,12 +14,8 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.CopyOnWriteArraySet
 
-/**
- * 传输服务器 - 接收文字和文件
- * 与桌面版协议完全兼容
- */
+/** TCP 接收服务器，与桌面版协议兼容 */
 class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
-    
     companion object {
         private const val TAG = "TransferServer"
     }
@@ -30,7 +26,6 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
     private val activeConnections = CopyOnWriteArraySet<Socket>()
     private val gson = Gson()
     
-    // 接收目录
     private val receiveDir: File by lazy {
         val dir = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
@@ -45,9 +40,6 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
     var onFileReceived: ((sender: String, fileName: String, filePath: String) -> Unit)? = null
     var onFileProgress: ((fileName: String, received: Long, total: Long) -> Unit)? = null
     
-    /**
-     * 启动服务器
-     */
     fun start() {
         if (isRunning) return
         
@@ -56,7 +48,7 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
             try {
                 serverSocket = ServerSocket(port).apply {
                     reuseAddress = true
-                    soTimeout = 1000 // 1秒超时，便于检查 isRunning
+                    soTimeout = 1000  // 便于检查 isRunning
                 }
                 
                 Log.i(TAG, "传输服务器已启动，端口: $port")
@@ -70,12 +62,9 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
                             handleClient(client)
                         }
                     } catch (e: SocketTimeoutException) {
-                        // 正常超时，继续循环
                         continue
                     } catch (e: SocketException) {
-                        if (isRunning) {
-                            Log.e(TAG, "Socket 异常: ${e.message}")
-                        }
+                        if (isRunning) Log.e(TAG, "Socket 异常: ${e.message}")
                         break
                     }
                 }
@@ -85,9 +74,6 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
         }
     }
     
-    /**
-     * 处理客户端连接
-     */
     private suspend fun handleClient(socket: Socket) {
         try {
             socket.soTimeout = 60000
@@ -128,11 +114,8 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
         }
     }
     
-    /**
-     * 处理文字消息
-     */
     private suspend fun handleTextMessage(message: TransferMessage, output: OutputStream) {
-        Log.i(TAG, "收到文字来自 ${message.sender}: ${message.content.take(50)}...")
+        Log.i(TAG, "收到文字来自 ${message.sender}: ${message.content.take(50)}..."))
         
         // 发送确认
         output.write("ACK".toByteArray())
@@ -144,9 +127,6 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
         }
     }
     
-    /**
-     * 处理文件消息
-     */
     private suspend fun handleFileMessage(
         message: TransferMessage, 
         input: DataInputStream,
@@ -156,12 +136,9 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
         val fileSize = message.file_size
         
         Log.i(TAG, "开始接收文件: $fileName ($fileSize bytes)")
-        
-        // 告诉发送方准备好了
         output.write("READY".toByteArray())
         output.flush()
         
-        // 生成唯一文件名
         var targetFile = File(receiveDir, fileName)
         var counter = 1
         val nameWithoutExt = fileName.substringBeforeLast(".")
@@ -172,7 +149,6 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
             counter++
         }
         
-        // 接收文件数据
         var received = 0L
         FileOutputStream(targetFile).use { fos ->
             val buffer = ByteArray(Config.BUFFER_SIZE)
@@ -186,17 +162,12 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
                 fos.write(buffer, 0, bytesRead)
                 received += bytesRead
                 
-                // 进度回调
-                withContext(Dispatchers.Main) {
-                    onFileProgress?.invoke(fileName, received, fileSize)
                 }
             }
         }
         
-        // 发送确认
         output.write("ACK".toByteArray())
         output.flush()
-        
         Log.i(TAG, "文件接收完成: ${targetFile.absolutePath}")
         
         // 回调到主线程
@@ -205,36 +176,22 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
         }
     }
     
-    /**
-     * 停止服务器
-     */
     fun stop() {
         Log.i(TAG, "正在停止服务器...")
         isRunning = false
-        
-        // 关闭所有活跃连接
         for (conn in activeConnections) {
             try {
                 conn.shutdownInput()
                 conn.shutdownOutput()
                 conn.close()
-            } catch (e: Exception) {
-                // 忽略
-            }
+            } catch (e: Exception) { }
         }
         activeConnections.clear()
-        
-        // 关闭服务器 Socket
         try {
             serverSocket?.close()
-        } catch (e: Exception) {
-            // 忽略
-        }
+        } catch (e: Exception) { }
         serverSocket = null
-        
-        // 取消所有协程
         scope.coroutineContext.cancelChildren()
-        
         Log.i(TAG, "传输服务器已停止")
     }
 }
