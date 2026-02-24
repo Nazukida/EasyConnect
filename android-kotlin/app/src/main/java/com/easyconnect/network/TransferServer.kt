@@ -115,7 +115,7 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
     }
     
     private suspend fun handleTextMessage(message: TransferMessage, output: OutputStream) {
-        Log.i(TAG, "收到文字来自 ${message.sender}: ${message.content.take(50)}..."))
+        Log.i(TAG, "收到文字来自 ${message.sender}: ${message.content.take(50)}...")
         
         // 发送确认
         output.write("ACK".toByteArray())
@@ -161,8 +161,6 @@ class TransferServer(private val port: Int = Config.TRANSFER_PORT) {
                 
                 fos.write(buffer, 0, bytesRead)
                 received += bytesRead
-                
-                }
             }
         }
         
